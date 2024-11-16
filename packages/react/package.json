@@ -2,10 +2,11 @@
   "name": "react",
   "version": "1.0.0",
   "description": "",
-  "main": "index.ts",
+  "module": "index.ts",
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "react": "file:"
+    "react": "file:",
+    "shared": "1.0.0"
   }
 }
