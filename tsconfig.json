@@ -2,7 +2,7 @@
 
 {
 	"compileOnSave": true,
-	"include": ["./scr/**/*"],
+	"include": ["./package/**/*"],
 	"compilerOptions": {
 		"target": "ESNext",
 		"useDefineForClassFields": true,
@@ -19,7 +19,7 @@
 		"noUnusedParameters": false,
 		"noImplicitReturns": false,
 		"skipLibCheck": true,
-		"baseUrl": "./scr",
+		"baseUrl": "./package",
 		"paths": {
 			"hostConfig": ["./react-reconciler/src/hostConfig.ts"]
 		}
