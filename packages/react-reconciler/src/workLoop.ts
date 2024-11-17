@@ -1,4 +1,6 @@
 // packages/react-reconciler/src/workLoop.ts
+import { MutationMask, NoFlags } from './fiberFlags';
+import { commitMutationEffects } from './commitWork';
 import { beginWork } from './begainWork';
 import { completeWork } from './completeWork';
 import { createWorkInProgress, FiberNode, FiberRootNode } from './fiber';
@@ -7,9 +9,11 @@ import { HostRoot } from './workTags';
 let workInProgress: FiberNode | null = null;
 
 function renderRoot(root: FiberRootNode) {
+	// 初始化 workInProgress 变量
 	prepareFreshStack(root);
 	do {
 		try {
+			// 深度优先遍历
 			workLoop();
 			break;
 		} catch (e) {
@@ -17,6 +21,45 @@ function renderRoot(root: FiberRootNode) {
 			workInProgress = null;
 		}
 	} while (true);
+
+	// 创建根 Fiber 树的 Root Fiber
+	const finishedWork = root.current.alternate;
+	root.finishedWork = finishedWork;
+
+	// 提交阶段的入口函数
+	commitRoot(root);
+}
+
+function commitRoot(root: FiberRootNode) {
+	const finishedWork = root.finishedWork;
+	if (finishedWork === null) {
+		return;
+	}
+
+	if (__DEV__) {
+		console.log('commit 阶段开始');
+	}
+
+	// 重置
+	root.finishedWork = null;
+
+	// 判断是否存在 3 个子阶段需要执行的操作
+	const subtreeHasEffects =
+		(finishedWork.subtreeFlags & MutationMask) !== NoFlags;
+	const rootHasEffects = (finishedWork.flags & MutationMask) !== NoFlags;
+
+	if (subtreeHasEffects || rootHasEffects) {
+		// TODO: BeforeMutation
+
+		// Mutation
+		commitMutationEffects(finishedWork);
+		// Fiber 树切换，workInProgress 变成 current
+		root.current = finishedWork;
+
+		// TODO: Layout
+	} else {
+		root.current = finishedWork;
+	}
 }
 
 // 初始化 workInProgress 变量

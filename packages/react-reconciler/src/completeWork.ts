@@ -54,10 +54,7 @@ export const completeWork = (workInProgress: FiberNode) => {
 	}
 };
 
-function appendAllChildren(
-	parent: Container | Instance,
-	workInProgress: FiberNode
-) {
+function appendAllChildren(parent: FiberNode, workInProgress: FiberNode) {
 	let node = workInProgress.child;
 	while (node !== null) {
 		if (node.tag == HostComponent || node.tag == HostText) {
