@@ -2,7 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-	<React.StrictMode>
-		<h1>123</h1>
-	</React.StrictMode>
+	<h1>
+		<h2>
+			<h3>123</h3>
+		</h2>
+	</h1>
 );

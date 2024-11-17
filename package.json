@@ -7,11 +7,12 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint --ext .ts,.jsx,.tsx --fix --quiet",
     "prepare": "husky",
-    "build-dev": "rimraf dist && rollup --config ./scripts/rollup/react.config.js --bundleConfigAsCjs",
+    "build-dev": "rimraf dist && rollup --config scripts/rollup/dev.config.js --bundleConfigAsCjs",
     "demo": "vite serve demos/test-fc --config scripts/vite/vite.config.js --force"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
+    "@rollup/plugin-alias": "^5.1.1",
     "@rollup/plugin-commonjs": "^28.0.1",
     "@rollup/plugin-replace": "^6.0.1",
     "@types/react": "^18.2.56",
