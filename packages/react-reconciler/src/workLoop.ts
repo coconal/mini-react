@@ -1,4 +1,6 @@
 // packages/react-reconciler/src/workLoop.ts
+import { beginWork } from './begainWork';
+import { completeWork } from './completeWork';
 import { createWorkInProgress, FiberNode, FiberRootNode } from './fiber';
 import { HostRoot } from './workTags';
 

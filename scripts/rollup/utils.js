@@ -17,6 +17,9 @@ export function getPackageJSON(pkgName) {
 	const str = fs.readFileSync(path, { encoding: 'utf-8' });
 	return JSON.parse(str);
 }
-export function getBaseRollupPlugins({ typescript = {} } = {}) {
-	return [cjs(), ts(typescript)];
+export function getBaseRollupPlugins({
+	alias = { __DEV__: true },
+	typescript = {}
+} = {}) {
+	return [replace(alias), cjs(), ts(typescript)];
 }
