@@ -1,9 +1,10 @@
 // packages/react-reconciler/src/workLoop.ts
-import { FiberNode } from './fiber';
+import { createWorkInProgress, FiberNode, FiberRootNode } from './fiber';
+import { HostRoot } from './workTags';
 
 let workInProgress: FiberNode | null = null;
 
-function renderRoot(root: FiberNode) {
+function renderRoot(root: FiberRootNode) {
 	prepareFreshStack(root);
 	do {
 		try {
@@ -17,10 +18,9 @@ function renderRoot(root: FiberNode) {
 }
 
 // 初始化 workInProgress 变量
-function prepareFreshStack(root: FiberNode) {
-	workInProgress = root;
+function prepareFreshStack(root: FiberRootNode) {
+	workInProgress = createWorkInProgress(root.current, {});
 }
-
 // 深度优先遍历，向下递归子节点
 function workLoop() {
 	while (workInProgress !== null) {
@@ -59,4 +59,22 @@ function completeUnitOfWork(fiber: FiberNode) {
 		// workInProgress 最终指向根节点
 		workInProgress = node;
 	} while (node !== null);
+}
+
+// 调度功能
+export function scheduleUpdateOnFiber(fiber: FiberNode) {
+	const root = markUpdateFromFiberToRoot(fiber);
+	renderRoot(root);
+}
+
+// 从触发更新的节点向上遍历到 FiberRootNode
+function markUpdateFromFiberToRoot(fiber: FiberNode) {
+	let node = fiber;
+	while (node.return !== null) {
+		node = node.return;
+	}
+	if (node.tag == HostRoot) {
+		return node.stateNode;
+	}
+	return null;
 }
