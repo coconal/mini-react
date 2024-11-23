@@ -7,7 +7,12 @@ import {
 	Instance
 } from 'hostConfig';
 import { FiberNode } from './fiber';
-import { HostComponent, HostRoot, HostText } from './workTags';
+import {
+	HostComponent,
+	HostRoot,
+	HostText,
+	FunctionComponent
+} from './workTags';
 import { NoFlags } from './fiberFlags';
 
 // 生成更新计划，计算和收集更新 flags
@@ -16,9 +21,9 @@ export const completeWork = (workInProgress: FiberNode) => {
 	const current = workInProgress.alternate;
 	switch (workInProgress.tag) {
 		case HostRoot:
+		case FunctionComponent:
 			bubbleProperties(workInProgress);
 			return null;
-
 		case HostComponent:
 			if (current !== null && workInProgress.stateNode !== null) {
 				// TODO: 组件的更新阶段
