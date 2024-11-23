@@ -18,6 +18,7 @@ export class FiberNode {
 	memoizedState: any;
 	alternate: FiberNode | null;
 	flags: Flags;
+	deletions: Array<FiberNode> | null;
 	subtreeFlags: Flags;
 	updateQueue: unknown;
 
@@ -39,7 +40,7 @@ export class FiberNode {
 		this.pendingProps = pendingProps; // 表示节点的新属性，用于在协调过程中进行更新
 		this.memoizedProps = null; // 已经更新完的属性
 		this.memoizedState = null; // 更新完成后新的 State
-
+		this.deletions = null; // 指向待删除的子节点，用于在协调过程中进行删除
 		this.alternate = null; // 指向节点的备份节点，用于在协调过程中进行比较
 		this.flags = NoFlags; // 表示节点的副作用类型，如更新、插入、删除等
 		this.subtreeFlags = NoFlags; // 表示子节点的副作用类型，如更新、插入、删除等
