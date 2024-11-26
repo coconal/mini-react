@@ -12,12 +12,14 @@ import {
 } from './updateQueue';
 import { Action } from 'shared/ReactTypes';
 import { scheduleUpdateOnFiber } from './workLoop';
+import { Lane, NoLane, requestUpdateLanes } from './fiberLanes';
 
 // 当前正在处理的 FiberNode
 let currentlyRenderingFiber: FiberNode | null = null;
 // Hooks 链表中当前正在处理的 Hook
 let workInProgressHook: Hook | null = null;
 let currentHook: Hook | null = null;
+let renderLane: Lane = NoLane;
 
 const { currentDispatcher } = internals;
 
@@ -28,13 +30,17 @@ export interface Hook {
 }
 
 // 执行函数组件中的函数
-export function renderWithHooks(workInProgress: FiberNode) {
+export function renderWithHooks(workInProgress: FiberNode, lane: Lane) {
 	// 赋值
 	currentlyRenderingFiber = workInProgress;
+	renderLane = lane;
 	workInProgress.memoizedState = null;
 
 	// 判断 Hooks 被调用的时机
 	const current = workInProgress.alternate;
+	if (__DEV__) {
+		console.warn(current !== null ? '组件的更新阶段' : '首屏渲染阶段');
+	}
 	if (current !== null) {
 		// 组件的更新阶段(update)
 		currentDispatcher.current = HooksDispatcherOnUpdate;
@@ -52,6 +58,8 @@ export function renderWithHooks(workInProgress: FiberNode) {
 	// 重置
 	currentlyRenderingFiber = null;
 	workInProgressHook = null;
+	currentHook = null;
+	renderLane = NoLane;
 
 	return children;
 }
@@ -76,7 +84,11 @@ function updateState<State>(): [State, Dispatch<State>] {
 	const pending = queue.shared.pending;
 
 	if (pending !== null) {
-		const { memoizedState } = processUpdateQueue(hook.memoizedState, pending);
+		const { memoizedState } = processUpdateQueue(
+			hook.memoizedState,
+			pending,
+			renderLane
+		);
 		hook.memoizedState = memoizedState;
 	}
 	return [hook.memoizedState, queue.dispatch as Dispatch<State>];
@@ -139,10 +151,11 @@ function dispatchSetState<State>(
 	updateQueue: UpdateQueue<State>,
 	action: Action<State>
 ) {
-	const update = createUpdate(action);
+	const lane = requestUpdateLanes();
+	const update = createUpdate(action, lane);
 	enqueueUpdate(updateQueue, update);
 	// 调度更新
-	scheduleUpdateOnFiber(fiber);
+	scheduleUpdateOnFiber(fiber, lane);
 }
 
 function updateWorkInProgressHook(): Hook {

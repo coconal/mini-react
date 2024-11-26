@@ -11,9 +11,11 @@ import {
 	HostComponent,
 	HostRoot,
 	HostText,
-	FunctionComponent
+	FunctionComponent,
+	Fragment
 } from './workTags';
 import { NoFlags, Update } from './fiberFlags';
+import { updateFiberProps } from 'react-dom/src/SyntheticEvent';
 
 // 生成更新计划，计算和收集更新 flags
 export const completeWork = (workInProgress: FiberNode) => {
@@ -22,11 +24,13 @@ export const completeWork = (workInProgress: FiberNode) => {
 	switch (workInProgress.tag) {
 		case HostRoot:
 		case FunctionComponent:
+		case Fragment:
 			bubbleProperties(workInProgress);
 			return null;
 		case HostComponent:
 			if (current !== null && workInProgress.stateNode !== null) {
 				// TODO: 组件的更新阶段
+				updateHostComponent(current, workInProgress);
 			} else {
 				// 首屏渲染阶段
 				// 构建 DOM
@@ -42,6 +46,7 @@ export const completeWork = (workInProgress: FiberNode) => {
 		case HostText:
 			if (current !== null && workInProgress.stateNode !== null) {
 				// TODO: 组件的更新阶段
+				updateHostText(current, workInProgress);
 			} else {
 				// 首屏渲染阶段
 				// 构建 DOM
@@ -56,7 +61,7 @@ export const completeWork = (workInProgress: FiberNode) => {
 			if (__DEV__) {
 				console.warn('completeWork 未实现的类型', workInProgress);
 			}
-			return null;
+			break;
 	}
 };
 
@@ -69,7 +74,13 @@ function updateHostText(current: FiberNode, workInProgress: FiberNode) {
 }
 
 function updateHostComponent(current: FiberNode, workInProgress: FiberNode) {
-	markUpdate(workInProgress);
+	const oldProps = current.memoizedProps;
+	const newProps = workInProgress.pendingProps;
+
+	if (oldProps !== newProps) {
+		markUpdate(workInProgress);
+	}
+	updateFiberProps(workInProgress.stateNode, newProps);
 }
 
 // 为 Fiber 节点增加 Update flags

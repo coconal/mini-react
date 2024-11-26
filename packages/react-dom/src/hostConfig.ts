@@ -1,5 +1,6 @@
 import { FiberNode } from 'react-reconciler/src/fiber';
 import { HostComponent, HostText } from 'react-reconciler/src/workTags';
+import { DOMElement, updateFiberProps } from './SyntheticEvent';
 
 export type Container = Element;
 export type Instance = Element;
@@ -8,6 +9,7 @@ export type TextInstance = Text;
 export const createInstance = (type: string, porps: any): Instance => {
 	// TODO: 处理 props
 	const element = document.createElement(type);
+	updateFiberProps(element as unknown as DOMElement, porps);
 	return element;
 };
 
@@ -36,8 +38,7 @@ export const commitUpdate = (fiber: FiberNode) => {
 	}
 	switch (fiber.tag) {
 		case HostComponent:
-			// TODO
-			break;
+			return updateFiberProps(fiber.stateNode, fiber.memoizedProps);
 		case HostText:
 			const text = fiber.memoizedProps.content;
 			commitTextUpdate(fiber.stateNode, text);
@@ -62,3 +63,19 @@ export const removeChild = (
 ) => {
 	container.removeChild(child);
 };
+
+export const insertChildToContainer = (
+	child: Instance,
+	container: Container,
+	before: Instance
+) => {
+	container.insertBefore(child, before);
+};
+
+export const scheduleMicroTask =
+	typeof queueMicrotask === 'function'
+		? queueMicrotask
+		: typeof Promise === 'function'
+			? (callback: (...args: any) => void) =>
+					Promise.resolve(null).then(callback)
+			: setTimeout;
