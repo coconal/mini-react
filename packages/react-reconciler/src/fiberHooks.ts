@@ -13,6 +13,8 @@ import {
 import { Action } from 'shared/ReactTypes';
 import { scheduleUpdateOnFiber } from './workLoop';
 import { Lane, NoLane, requestUpdateLanes } from './fiberLanes';
+import { EffectTags, HookHasEffect, Passive } from './hookEffectTags';
+import { PassiveEffect } from './fiberFlags';
 
 // 当前正在处理的 FiberNode
 let currentlyRenderingFiber: FiberNode | null = null;
@@ -28,6 +30,17 @@ export interface Hook {
 	queue: any;
 	next: Hook | null;
 }
+
+export interface Effect {
+	tag: EffectTags;
+	create: EffectCallback | void;
+	destroy: EffectCallback | void;
+	deps: EffectDeps;
+	next: Effect | null;
+}
+
+type EffectCallback = () => void;
+type EffectDeps = any[] | null;
 
 // 执行函数组件中的函数
 export function renderWithHooks(workInProgress: FiberNode, lane: Lane) {
@@ -65,11 +78,13 @@ export function renderWithHooks(workInProgress: FiberNode, lane: Lane) {
 }
 
 const HooksDispatcherOnMount: Dispatcher = {
-	useState: mountState
+	useState: mountState,
+	useEffect: mountEffect
 };
 
 const HooksDispatcherOnUpdate: Dispatcher = {
-	useState: updateState
+	useState: updateState,
+	useEffect: updateEffect
 };
 
 function updateState<State>(): [State, Dispatch<State>] {
@@ -92,6 +107,20 @@ function updateState<State>(): [State, Dispatch<State>] {
 		hook.memoizedState = memoizedState;
 	}
 	return [hook.memoizedState, queue.dispatch as Dispatch<State>];
+}
+
+function mountEffect(create: EffectCallback | void, deps: EffectDeps | void) {
+	// 当前正在工作的 useEffect
+	const hook = mountWorkInProgressHook();
+	const nextDeps = deps == undefined ? null : deps;
+
+	(currentlyRenderingFiber as FiberNode).flags |= PassiveEffect;
+	hook.memoizedState = pushEffect(
+		Passive | HookHasEffect,
+		create,
+		undefined,
+		nextDeps
+	);
 }
 
 // 获取当前正在工作的 Hook
@@ -143,6 +172,52 @@ function mountState<State>(
 	queue.dispatch = dispatch;
 
 	return [memoizedState, dispatch];
+}
+
+function creactFCUpdateQueue<State>() {
+	const updateQueue = createUpdateQueue<State>() as FCUpdateQueue<State>;
+	updateQueue.lastEffect = null;
+	return updateQueue;
+}
+
+function pushEffect(
+	tag: EffectTags,
+	create: EffectCallback | void,
+	destroy: EffectCallback | void,
+	deps: EffectDeps
+): Effect {
+	const effect: Effect = {
+		tag,
+		create,
+		destroy,
+		deps,
+		next: null
+	};
+	const fiber = currentlyRenderingFiber as FiberNode;
+	const updateQueue = fiber.updateQueue as FCUpdateQueue<any>;
+	if (updateQueue === null) {
+		const newUpdateQueue = creactFCUpdateQueue();
+		effect.next = effect;
+		newUpdateQueue.lastEffect = effect;
+		fiber.updateQueue = newUpdateQueue;
+	} else {
+		const lastEffect = updateQueue.lastEffect;
+		if (lastEffect == null) {
+			effect.next = effect;
+			updateQueue.lastEffect = effect;
+		} else {
+			const firstEffect = lastEffect.next;
+			lastEffect.next = effect;
+			effect.next = firstEffect;
+			updateQueue.lastEffect = effect;
+		}
+	}
+	return effect;
+}
+
+// 定义函数组件的 FCUpdateQueue 数据结构
+export interface FCUpdateQueue<State> extends UpdateQueue<State> {
+	lastEffect: Effect | null;
 }
 
 // 用于触发状态更新的逻辑
@@ -204,4 +279,47 @@ function updateWorkInProgressHook(): Hook {
 		workInProgressHook = newHook;
 	}
 	return workInProgressHook;
+}
+
+function updateEffect(create: EffectCallback | void, deps: EffectDeps | void) {
+	// 当前正在工作的 useEffect
+	const hook = updateWorkInProgressHook();
+	const nextDeps = deps == undefined ? null : (deps as EffectDeps);
+	let destroy: EffectCallback | void;
+
+	if (currentHook !== null) {
+		const prevEffect = currentHook.memoizedState as Effect;
+		destroy = prevEffect.destroy;
+		if (nextDeps !== null) {
+			// 浅比较依赖
+			const prevDeps = prevEffect.deps;
+			// 浅比较相等，依赖没有变化
+			if (areHookInputsEqual(nextDeps, prevDeps)) {
+				hook.memoizedState = pushEffect(Passive, create, destroy, nextDeps);
+				return;
+			}
+			// 浅比较不相等，依赖变化了
+			(currentlyRenderingFiber as FiberNode).flags |= PassiveEffect;
+			hook.memoizedState = pushEffect(
+				Passive | HookHasEffect,
+				create,
+				destroy,
+				nextDeps
+			);
+		}
+	}
+}
+
+function areHookInputsEqual(
+	nextDeps: EffectDeps,
+	prevDeps: EffectDeps
+): boolean {
+	if (nextDeps === null || prevDeps === null) return false;
+	for (let i = 0; i < nextDeps.length && i < prevDeps.length; i++) {
+		if (Object.is(nextDeps[i], prevDeps[i])) {
+			continue;
+		}
+		return false;
+	}
+	return true;
 }
