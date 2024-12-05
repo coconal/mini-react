@@ -12,7 +12,7 @@ import { Effect } from './fiberHooks';
 
 export class FiberNode {
 	tag: WorkTag;
-	key: Key | null;
+	key: Key;
 	stateNode: any;
 	type: any;
 	return: FiberNode | null;
@@ -32,7 +32,7 @@ export class FiberNode {
 	constructor(tag: WorkTag, pendingProps: Props, key: Key) {
 		// 类型
 		this.tag = tag;
-		this.key = key || null;
+		this.key = key;
 		this.ref = null;
 		this.stateNode = null; // 节点对应的实际 DOM 节点或组件实例
 		this.type = null; // 节点的类型，可以是原生 DOM 元素、函数组件或类组件等
