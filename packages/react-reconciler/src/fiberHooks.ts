@@ -97,7 +97,7 @@ function updateState<State>(): [State, Dispatch<State>] {
 	// 计算新 state 的逻辑
 	const queue = hook.queue as UpdateQueue<State>;
 	const pending = queue.shared.pending;
-
+	queue.shared.pending = null; // fix
 	if (pending !== null) {
 		const { memoizedState } = processUpdateQueue(
 			hook.memoizedState,
