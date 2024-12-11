@@ -62,7 +62,7 @@ export const jsx = (type: ElementType, config: any, ...children: any) => {
 	return ReactElement(type, key, ref, props);
 };
 
-export const jsxDEV = (type: ElementType, config: any) => {
+export const jsxDEV = (type: ElementType, config: any, maybeKey: any) => {
 	let key: Key = null;
 	let ref: Ref = null;
 	const props: Props = {};
@@ -84,5 +84,9 @@ export const jsxDEV = (type: ElementType, config: any) => {
 			props[prop] = val;
 		}
 	}
+	if (maybeKey !== undefined) {
+		key = '' + maybeKey;
+	}
+
 	return ReactElement(type, key, ref, props);
 };
