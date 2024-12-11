@@ -29,7 +29,12 @@ const ReactElement = function (
 	return element;
 };
 
-export const jsx = (type: ElementType, config: any, ...children: any) => {
+export const jsx = (
+	type: ElementType,
+	config: any,
+	maybeKey: any,
+	...children: any
+) => {
 	let key: Key = null;
 	let ref: Ref = null;
 	const props: Props = {};
@@ -51,6 +56,10 @@ export const jsx = (type: ElementType, config: any, ...children: any) => {
 			props[prop] = val;
 		}
 	}
+	if (maybeKey !== undefined) {
+		key = '' + maybeKey;
+	}
+
 	const childrenLength = children.length;
 	if (childrenLength) {
 		if (childrenLength === 1) {
@@ -68,12 +77,6 @@ export const jsxDEV = (type: ElementType, config: any, maybeKey: any) => {
 	const props: Props = {};
 	for (const prop in config) {
 		const val = config[prop];
-		if (prop === 'key') {
-			if (val !== undefined) {
-				key = '' + val;
-			}
-			continue;
-		}
 		if (prop === 'ref') {
 			if (val !== undefined) {
 				ref = val;
