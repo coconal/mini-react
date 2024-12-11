@@ -265,7 +265,12 @@ function ChildReconciler(shouldTrackSideEffects: boolean) {
 		index: number,
 		element: any
 	): FiberNode | null {
-		const keyToUse = element.key !== null ? element.key : index.toString();
+		const keyToUse =
+			element.key !== undefined
+				? element.key !== null
+					? element.key
+					: index.toString()
+				: index.toString();
 		const before = existingChildren.get(keyToUse);
 
 		// HostText

@@ -14,7 +14,7 @@ export const Fragment = REACT_FRAGMENT_TYPE;
 
 const ReactElement = function (
 	type: Type,
-	key: Key,
+	key: Key | null,
 	ref: Ref,
 	props: Props
 ): ReactElementType {

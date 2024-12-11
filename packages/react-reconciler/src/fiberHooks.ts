@@ -79,13 +79,42 @@ export function renderWithHooks(workInProgress: FiberNode, lane: Lane) {
 
 const HooksDispatcherOnMount: Dispatcher = {
 	useState: mountState,
-	useEffect: mountEffect
+	useEffect: mountEffect,
+	useMemo: mountMemo,
+	useCallback: mountCallback
 };
 
 const HooksDispatcherOnUpdate: Dispatcher = {
 	useState: updateState,
-	useEffect: updateEffect
+	useEffect: updateEffect,
+	useMemo: updateMemo,
+	useCallback: updateCallback
 };
+
+function mountState<State>(
+	initialState: (() => State) | State
+): [State, Dispatch<State>] {
+	// 当前正在工作的 useState
+	const hook = mountWorkInProgressHook();
+
+	// 当前 useState 对应的 Hook 数据
+	let memoizedState;
+	if (initialState instanceof Function) {
+		memoizedState = initialState();
+	} else {
+		memoizedState = initialState;
+	}
+	hook.memoizedState = memoizedState;
+
+	const queue = createUpdateQueue<State>();
+	hook.queue = queue;
+	// @ts-ignore
+	// 实现 dispatch
+	const dispatch = dispatchSetState.bind(null, currentlyRenderingFiber, queue);
+	queue.dispatch = dispatch;
+
+	return [memoizedState, dispatch];
+}
 
 function updateState<State>(): [State, Dispatch<State>] {
 	if (__DEV__) {
@@ -123,6 +152,57 @@ function mountEffect(create: EffectCallback | void, deps: EffectDeps | void) {
 	);
 }
 
+function mountMemo<State>(nextCreate: () => State, deps: EffectDeps): State {
+	const hook = mountWorkInProgressHook();
+	const nextDeps = deps == undefined ? null : deps;
+
+	const nextValue = nextCreate();
+	hook.memoizedState = [nextValue, nextDeps];
+	return nextValue;
+}
+
+function mountCallback<State>(callback: State, deps: EffectDeps): State {
+	const hook = mountWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+	hook.memoizedState = [callback, nextDeps];
+	return callback;
+}
+
+function updateCallback<State>(callback: State, deps: EffectDeps): State {
+	const hook = updateWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+	const prevState = hook.memoizedState;
+
+	if (prevState !== null) {
+		if (nextDeps !== null) {
+			const prevDeps: EffectDeps = prevState[1];
+			if (areHookInputsEqual(nextDeps, prevDeps)) {
+				return prevState[0];
+			}
+		}
+	}
+	hook.memoizedState = [callback, nextDeps];
+	return callback;
+}
+
+function updateMemo<State>(nextCreate: () => State, deps: EffectDeps): State {
+	console.log('updateMemo 阶段开始');
+	const hook = updateWorkInProgressHook();
+	const nextDeps = deps == undefined ? null : deps;
+	const prevState = hook.memoizedState;
+	if (prevState !== null) {
+		if (nextDeps !== null) {
+			const prevDeps: any[] | null = prevState[1];
+			if (areHookInputsEqual(prevDeps, nextDeps)) {
+				return prevState[0];
+			}
+		}
+	}
+	const nextValue = nextCreate();
+	hook.memoizedState = [nextValue, nextDeps];
+	return nextValue;
+}
+
 // 获取当前正在工作的 Hook
 function mountWorkInProgressHook(): Hook {
 	const hook: Hook = {
@@ -149,29 +229,52 @@ function mountWorkInProgressHook(): Hook {
 	return workInProgressHook;
 }
 
-function mountState<State>(
-	initialState: (() => State) | State
-): [State, Dispatch<State>] {
-	// 当前正在工作的 useState
-	const hook = mountWorkInProgressHook();
-
-	// 当前 useState 对应的 Hook 数据
-	let memoizedState;
-	if (initialState instanceof Function) {
-		memoizedState = initialState();
+function updateWorkInProgressHook(): Hook {
+	// TODO render 阶段触发的更新
+	// 保存链表中的下一个 Hook
+	let nextCurrentHook: Hook | null;
+	if (currentHook == null) {
+		// 这是函数组件 update 时的第一个 hook
+		let current = (currentlyRenderingFiber as FiberNode).alternate;
+		if (current === null) {
+			nextCurrentHook = null;
+		} else {
+			nextCurrentHook = current.memoizedState;
+		}
 	} else {
-		memoizedState = initialState;
+		// 这是函数组件 update 时后续的 hook
+		nextCurrentHook = currentHook.next;
 	}
-	hook.memoizedState = memoizedState;
 
-	const queue = createUpdateQueue<State>();
-	hook.queue = queue;
-	// @ts-ignore
-	// 实现 dispatch
-	const dispatch = dispatchSetState.bind(null, currentlyRenderingFiber, queue);
-	queue.dispatch = dispatch;
+	if (nextCurrentHook == null) {
+		throw new Error(
+			`组件 ${currentlyRenderingFiber?.type} 本次执行时的 Hooks 比上次执行多`
+		);
+	}
 
-	return [memoizedState, dispatch];
+	currentHook = nextCurrentHook as Hook;
+	const newHook: Hook = {
+		memoizedState: currentHook.memoizedState,
+		queue: currentHook.queue,
+		next: null
+	};
+	if (workInProgressHook == null) {
+		// update 时的第一个hook
+		if (currentlyRenderingFiber !== null) {
+			workInProgressHook = newHook;
+			currentlyRenderingFiber.memoizedState = workInProgressHook;
+		} else {
+			// currentlyRenderingFiber == null 代表 Hook 执行的上下文不是一个函数组件
+			throw new Error('Hooks 只能在函数组件中执行');
+		}
+	} else {
+		// update 时的其他 hook
+		// 将当前处理的 Hook.next 指向新建的 hook，形成 Hooks 链表
+		workInProgressHook.next = newHook;
+		// 更新当前处理的 Hook
+		workInProgressHook = newHook;
+	}
+	return workInProgressHook;
 }
 
 function creactFCUpdateQueue<State>() {
@@ -231,54 +334,6 @@ function dispatchSetState<State>(
 	enqueueUpdate(updateQueue, update);
 	// 调度更新
 	scheduleUpdateOnFiber(fiber, lane);
-}
-
-function updateWorkInProgressHook(): Hook {
-	// TODO render 阶段触发的更新
-	// 保存链表中的下一个 Hook
-	let nextCurrentHook: Hook | null;
-	if (currentHook == null) {
-		// 这是函数组件 update 时的第一个 hook
-		let current = (currentlyRenderingFiber as FiberNode).alternate;
-		if (current === null) {
-			nextCurrentHook = null;
-		} else {
-			nextCurrentHook = current.memoizedState;
-		}
-	} else {
-		// 这是函数组件 update 时后续的 hook
-		nextCurrentHook = currentHook.next;
-	}
-
-	if (nextCurrentHook == null) {
-		throw new Error(
-			`组件 ${currentlyRenderingFiber?.type} 本次执行时的 Hooks 比上次执行多`
-		);
-	}
-
-	currentHook = nextCurrentHook as Hook;
-	const newHook: Hook = {
-		memoizedState: currentHook.memoizedState,
-		queue: currentHook.queue,
-		next: null
-	};
-	if (workInProgressHook == null) {
-		// update 时的第一个hook
-		if (currentlyRenderingFiber !== null) {
-			workInProgressHook = newHook;
-			currentlyRenderingFiber.memoizedState = workInProgressHook;
-		} else {
-			// currentlyRenderingFiber == null 代表 Hook 执行的上下文不是一个函数组件
-			throw new Error('Hooks 只能在函数组件中执行');
-		}
-	} else {
-		// update 时的其他 hook
-		// 将当前处理的 Hook.next 指向新建的 hook，形成 Hooks 链表
-		workInProgressHook.next = newHook;
-		// 更新当前处理的 Hook
-		workInProgressHook = newHook;
-	}
-	return workInProgressHook;
 }
 
 function updateEffect(create: EffectCallback | void, deps: EffectDeps | void) {
