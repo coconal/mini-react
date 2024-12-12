@@ -9,6 +9,11 @@ export interface Dispatcher {
 	useEffect: (callback: () => void | void, deps: any[] | void) => void;
 	useMemo: <S>(callback: () => S, deps: any[] | null) => S;
 	useCallback: <S>(callback: S, deps: any[] | null) => S;
+	useReducer: <S, I, A>(
+		reducer: (s: S, action: A) => S,
+		initialArg: I,
+		init?: (initial: I) => S
+	) => [S, Dispatch<S>];
 }
 
 export type Dispatch<State> = (action: Action<State>) => void;

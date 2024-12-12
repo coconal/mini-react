@@ -1,35 +1,25 @@
 import React from 'react';
-import { useState, useEffect } from 'react';
+import { useReducer } from 'react';
 import ReactDOM from 'react-dom/client';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
 
 function App() {
-	const [count, setCount] = useState(1210);
-	useEffect(() => {
-		console.log('app mount');
-	}, []);
+	const reducer = (state, action) => {
+		switch (action.type) {
+			case 'up':
+				return state + 1;
+		}
+	};
 
-	useEffect(() => {
-		console.log('count change create', count);
-		return () => {
-			console.log('count change destroy', count);
-		};
-	}, [count]);
-
+	const [state, dispatch] = useReducer(reducer, 1);
 	return (
-		<div onClick={() => setCount((count) => count + 1)}>
-			{count === 0 ? <Child /> : 'noop'}
+		<div
+			onClick={() => {
+				dispatch({ type: 'up' });
+			}}
+		>
+			{state}
 		</div>
 	);
-}
-
-function Child() {
-	useEffect(() => {
-		console.log('child mount');
-		return () => {
-			console.log('child destroy');
-		};
-	}, []);
-	return <span>I am child</span>;
 }

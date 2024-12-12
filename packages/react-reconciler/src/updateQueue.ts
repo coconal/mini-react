@@ -7,7 +7,7 @@ import { Lane } from './fiberLanes';
 // 定义 Update 数据结构
 export interface Update<State> {
 	action: Action<State>;
-	next: Update<any> | null;
+	next: Update<State> | null;
 	lane: Lane;
 }
 
@@ -68,7 +68,7 @@ export const processUpdateQueue = <State>(
 	};
 	if (pendingUpdate !== null) {
 		// 第一个 update
-		let first = pendingUpdate.next;
+		const first = pendingUpdate.next;
 		let pending = first as Update<any>;
 		do {
 			const updateLane = pending.lane;

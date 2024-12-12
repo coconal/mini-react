@@ -81,14 +81,16 @@ const HooksDispatcherOnMount: Dispatcher = {
 	useState: mountState,
 	useEffect: mountEffect,
 	useMemo: mountMemo,
-	useCallback: mountCallback
+	useCallback: mountCallback,
+	useReducer: mountReducer
 };
 
 const HooksDispatcherOnUpdate: Dispatcher = {
 	useState: updateState,
 	useEffect: updateEffect,
 	useMemo: updateMemo,
-	useCallback: updateCallback
+	useCallback: updateCallback,
+	useReducer: updateReducer
 };
 
 function mountState<State>(
@@ -168,6 +170,56 @@ function mountCallback<State>(callback: State, deps: EffectDeps): State {
 	return callback;
 }
 
+function mountReducer<State, I, A>(
+	reducer: (s: State, action: A) => State,
+	initialArg: I,
+	init?: (initial: I) => State
+): [State, Dispatch<State>] {
+	const hook = mountWorkInProgressHook();
+	let initialState;
+	if (init !== undefined) {
+		init(initialArg);
+	} else {
+		initialState = initialArg;
+	}
+	hook.memoizedState = initialState;
+	const queue: UpdateQueue<State> = createUpdateQueue<State>();
+	hook.queue = queue;
+
+	const dispatch = dispatchReducerAction.bind(
+		null,
+		// @ts-ignore
+		currentlyRenderingFiber,
+		queue,
+		hook,
+		reducer
+	);
+	queue.dispatch = dispatch;
+	return [hook.memoizedState, dispatch];
+}
+
+function updateReducer<State, I, A>(
+	reducer: (s: State, a: A) => State,
+	initialArg: I,
+	init?: (i: I) => State
+): [State, Dispatch<State>] {
+	const hook = updateWorkInProgressHook();
+	const queue = hook.queue;
+	const pending = queue.shared.pending;
+
+	queue.shared.pending = null;
+	if (pending !== null) {
+		const { memoizedState } = processUpdateQueue(
+			hook.memoizedState,
+			pending,
+			renderLane
+		);
+		hook.memoizedState = memoizedState;
+	}
+
+	return [hook.memoizedState, queue.dispatch];
+}
+
 function updateCallback<State>(callback: State, deps: EffectDeps): State {
 	const hook = updateWorkInProgressHook();
 	const nextDeps = deps === undefined ? null : deps;
@@ -235,7 +287,7 @@ function updateWorkInProgressHook(): Hook {
 	let nextCurrentHook: Hook | null;
 	if (currentHook == null) {
 		// 这是函数组件 update 时的第一个 hook
-		let current = (currentlyRenderingFiber as FiberNode).alternate;
+		const current = (currentlyRenderingFiber as FiberNode).alternate;
 		if (current === null) {
 			nextCurrentHook = null;
 		} else {
@@ -331,6 +383,21 @@ function dispatchSetState<State>(
 ) {
 	const lane = requestUpdateLanes();
 	const update = createUpdate(action, lane);
+	enqueueUpdate(updateQueue, update);
+	// 调度更新
+	scheduleUpdateOnFiber(fiber, lane);
+}
+
+function dispatchReducerAction<State, A>(
+	fiber: FiberNode,
+	updateQueue: UpdateQueue<State>,
+	hook: Hook,
+	reducer: (state: State, action: A) => State,
+	action: A
+) {
+	const newValue = reducer(hook.memoizedState, action);
+	const lane = requestUpdateLanes();
+	const update = createUpdate(newValue, lane);
 	enqueueUpdate(updateQueue, update);
 	// 调度更新
 	scheduleUpdateOnFiber(fiber, lane);
