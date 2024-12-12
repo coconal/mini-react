@@ -17,6 +17,8 @@ export interface UpdateQueue<State> {
 		pending: Update<State> | null;
 	};
 	dispatch: Dispatch<State> | null;
+	lastReducer: ((s: State, a: any) => State) | null;
+	lastState: State | null;
 }
 
 // 创建 Update 实例的方法
@@ -37,7 +39,9 @@ export const createUpdateQueue = <State>(): UpdateQueue<State> => {
 		shared: {
 			pending: null
 		},
-		dispatch: null
+		dispatch: null,
+		lastReducer: null,
+		lastState: null
 	};
 };
 
@@ -60,34 +64,47 @@ export const enqueueUpdate = <State>(
 // 从 UpdateQueue 中消费 Update 的方法
 export const processUpdateQueue = <State>(
 	baseState: State,
-	pendingUpdate: Update<State> | null,
+	queue: UpdateQueue<State> | null,
 	renderLane: Lane
 ): { memoizedState: State } => {
 	const result: ReturnType<typeof processUpdateQueue<State>> = {
 		memoizedState: baseState
 	};
-	if (pendingUpdate !== null) {
-		// 第一个 update
-		const first = pendingUpdate.next;
-		let pending = first as Update<any>;
-		do {
-			const updateLane = pending.lane;
-			if (updateLane == renderLane) {
-				const action = pending.action;
-				if (action instanceof Function) {
-					// action 是回调函数
-					baseState = action(baseState);
+	if (queue !== null) {
+		const pendingUpdate = queue.shared.pending;
+		queue!.shared.pending = null;
+		const reducer = queue.lastReducer;
+		const lastState = queue.lastState;
+
+		if (pendingUpdate !== null) {
+			// 第一个 update
+			const first = pendingUpdate.next;
+			let pending = first as Update<any>;
+			do {
+				const updateLane = pending.lane;
+				if (updateLane == renderLane) {
+					const action = pending.action;
+
+					if (action instanceof Function) {
+						// action 是回调函数
+
+						baseState = action(baseState);
+					} else {
+						// action 是状态值
+						if (reducer !== null && lastState !== null) {
+							baseState = reducer(baseState, action);
+						} else {
+							baseState = action;
+						}
+					}
 				} else {
-					// action 是状态值
-					baseState = action;
+					if (__DEV__) {
+						console.error('不应该进入 updateLane !== renderLane 逻辑');
+					}
 				}
-			} else {
-				if (__DEV__) {
-					console.error('不应该进入 updateLane !== renderLane 逻辑');
-				}
-			}
-			pending = pending.next as Update<any>;
-		} while (pending !== first);
+				pending = pending.next as Update<any>;
+			} while (pending !== first);
+		}
 	}
 
 	result.memoizedState = baseState;

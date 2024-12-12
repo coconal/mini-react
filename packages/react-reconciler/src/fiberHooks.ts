@@ -127,12 +127,11 @@ function updateState<State>(): [State, Dispatch<State>] {
 
 	// 计算新 state 的逻辑
 	const queue = hook.queue as UpdateQueue<State>;
-	const pending = queue.shared.pending;
-	queue.shared.pending = null; // fix
-	if (pending !== null) {
+
+	if (queue.shared.pending !== null) {
 		const { memoizedState } = processUpdateQueue(
 			hook.memoizedState,
-			pending,
+			queue,
 			renderLane
 		);
 		hook.memoizedState = memoizedState;
@@ -185,13 +184,12 @@ function mountReducer<State, I, A>(
 	hook.memoizedState = initialState;
 	const queue: UpdateQueue<State> = createUpdateQueue<State>();
 	hook.queue = queue;
-
+	queue.lastState = hook.memoizedState;
 	const dispatch = dispatchReducerAction.bind(
 		null,
 		// @ts-ignore
 		currentlyRenderingFiber,
 		queue,
-		hook,
 		reducer
 	);
 	queue.dispatch = dispatch;
@@ -205,17 +203,17 @@ function updateReducer<State, I, A>(
 ): [State, Dispatch<State>] {
 	const hook = updateWorkInProgressHook();
 	const queue = hook.queue;
-	const pending = queue.shared.pending;
+	queue.lastReducer = reducer;
 
-	queue.shared.pending = null;
-	if (pending !== null) {
+	if (queue.shared.pending !== null) {
 		const { memoizedState } = processUpdateQueue(
 			hook.memoizedState,
-			pending,
+			queue,
 			renderLane
 		);
 		hook.memoizedState = memoizedState;
 	}
+	queue.lastReducer = null;
 
 	return [hook.memoizedState, queue.dispatch];
 }
@@ -391,13 +389,11 @@ function dispatchSetState<State>(
 function dispatchReducerAction<State, A>(
 	fiber: FiberNode,
 	updateQueue: UpdateQueue<State>,
-	hook: Hook,
 	reducer: (state: State, action: A) => State,
-	action: A
+	action: State
 ) {
-	const newValue = reducer(hook.memoizedState, action);
 	const lane = requestUpdateLanes();
-	const update = createUpdate(newValue, lane);
+	const update = createUpdate(action, lane);
 	enqueueUpdate(updateQueue, update);
 	// 调度更新
 	scheduleUpdateOnFiber(fiber, lane);

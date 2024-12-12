@@ -44,11 +44,13 @@ function updateHostRoot(workInProgress: FiberNode, renderLane: Lane) {
 	// 根据当前节点和工作中节点的状态进行比较，处理属性等更新逻辑
 	const baseState = workInProgress.memoizedState;
 	const updateQueue = workInProgress.updateQueue as UpdateQueue<Element>;
-	const pending = updateQueue.shared.pending;
-	// 清空更新链表
-	updateQueue.shared.pending = null;
+
 	// 计算待更新状态的最新值
-	const { memoizedState } = processUpdateQueue(baseState, pending, renderLane);
+	const { memoizedState } = processUpdateQueue(
+		baseState,
+		updateQueue,
+		renderLane
+	);
 	workInProgress.memoizedState = memoizedState;
 
 	// 处理子节点的更新逻辑
