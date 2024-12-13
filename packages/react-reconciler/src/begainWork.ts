@@ -7,11 +7,13 @@ import {
 	HostRoot,
 	HostText,
 	FunctionComponent,
-	Fragment
+	Fragment,
+	ContextProvider
 } from './workTags';
 import { reconcileChildFibers, mountChildFibers } from './childFiber';
 import { renderWithHooks } from './fiberHooks';
 import { Lane } from './fiberLanes';
+import { pushProvider } from './fiberNewContext';
 
 // 比较并返回子 FiberNode
 export const beginWork = (workInProgress: FiberNode, renderLane: Lane) => {
@@ -26,6 +28,8 @@ export const beginWork = (workInProgress: FiberNode, renderLane: Lane) => {
 			return updateHostText();
 		case Fragment:
 			return updateFragment(workInProgress);
+		case ContextProvider:
+			return updateContextProvider(workInProgress);
 		default:
 			if (__DEV__) {
 				console.warn('beginWork 未实现的类型', workInProgress.tag);
@@ -76,6 +80,16 @@ function updateHostComponent(workInProgress: FiberNode) {
 function updateHostText() {
 	// 没有子节点，直接返回 null
 	return null;
+}
+
+function updateContextProvider(workInProgress: FiberNode) {
+	const context = workInProgress.type._context;
+	const newProps = workInProgress.pendingProps;
+	const value = newProps.value;
+	const nextChildren = newProps.children;
+	pushProvider(context, value);
+	reconcileChildren(workInProgress, nextChildren);
+	return workInProgress.child;
 }
 
 // 对比子节点的 current FiberNode 与 子节点的 ReactElement

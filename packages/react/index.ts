@@ -3,6 +3,11 @@ import currentDispatcher, {
 	Dispatcher,
 	resolveDispatcher
 } from './src/currentDispatcher';
+import { ReactContext } from '../shared/ReactTypes';
+import {
+	REACT_CONTEXT_TYPE,
+	REACT_PROVIDER_TYPE
+} from '../shared/ReactSymbols';
 import { jsx } from './src/jsx';
 
 export const useState: Dispatcher['useState'] = (initialState) => {
@@ -37,6 +42,25 @@ export const useReducer: Dispatcher['useReducer'] = (
 export const useRef: Dispatcher['useRef'] = (initalValue) => {
 	const dispatcher = resolveDispatcher();
 	return dispatcher.useRef(initalValue);
+};
+
+export const createContext = <T>(defaultValue: T): ReactContext<T> => {
+	const context: ReactContext<T> = {
+		$$typeof: REACT_CONTEXT_TYPE,
+		_currentValue: defaultValue,
+		Provider: null,
+		Consumer: null
+	};
+	context.Provider = {
+		$$typeof: REACT_PROVIDER_TYPE,
+		_context: context
+	};
+	return context;
+};
+
+export const useContext: Dispatcher['useContext'] = (context) => {
+	const dispatcher = resolveDispatcher();
+	return dispatcher.useContext(context);
 };
 
 // 内部数据共享层

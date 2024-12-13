@@ -14,3 +14,15 @@ export interface ReactElementType {
 }
 
 export type Action<State> = State | ((prevState: State) => State);
+
+export type ReactContext<T> = {
+	$$typeof: symbol | number;
+	_currentValue: T;
+	Provider: ReactProviderType<T> | null;
+	Consumer: ReactContext<T> | null;
+};
+
+export type ReactProviderType<T> = {
+	$$typeof: symbol | number;
+	_context: ReactContext<T>;
+};

@@ -1,5 +1,5 @@
 // packages/react/src/currentDispatcher.ts
-import { Action } from 'shared/ReactTypes';
+import { Action, ReactContext } from 'shared/ReactTypes';
 
 // const [data, setData] = useState(0);
 // or
@@ -15,6 +15,7 @@ export interface Dispatcher {
 		init?: (initial: I) => S
 	) => [S, Dispatch<S>];
 	useRef: <S>(initialValue: S) => { current: S };
+	useContext: <S>(context: ReactContext<S>) => S;
 }
 
 export type Dispatch<State> = (action: Action<State>) => void;

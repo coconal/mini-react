@@ -12,10 +12,12 @@ import {
 	HostRoot,
 	HostText,
 	FunctionComponent,
-	Fragment
+	Fragment,
+	ContextProvider
 } from './workTags';
 import { NoFlags, Update } from './fiberFlags';
 import { updateFiberProps } from 'react-dom/src/SyntheticEvent';
+import { popProvider } from './fiberNewContext';
 
 // 生成更新计划，计算和收集更新 flags
 export const completeWork = (workInProgress: FiberNode) => {
@@ -25,6 +27,10 @@ export const completeWork = (workInProgress: FiberNode) => {
 		case HostRoot:
 		case FunctionComponent:
 		case Fragment:
+			bubbleProperties(workInProgress);
+			return null;
+		case ContextProvider:
+			popProvider(workInProgress.type._context);
 			bubbleProperties(workInProgress);
 			return null;
 		case HostComponent:

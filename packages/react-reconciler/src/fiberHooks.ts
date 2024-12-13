@@ -10,11 +10,12 @@ import {
 	createUpdateQueue,
 	processUpdateQueue
 } from './updateQueue';
-import { Action } from 'shared/ReactTypes';
+import { Action, ReactContext } from 'shared/ReactTypes';
 import { scheduleUpdateOnFiber } from './workLoop';
 import { Lane, NoLane, requestUpdateLanes } from './fiberLanes';
 import { EffectTags, HookHasEffect, Passive } from './hookEffectTags';
 import { PassiveEffect } from './fiberFlags';
+import { readContext } from './fiberNewContext';
 
 // 当前正在处理的 FiberNode
 let currentlyRenderingFiber: FiberNode | null = null;
@@ -83,7 +84,8 @@ const HooksDispatcherOnMount: Dispatcher = {
 	useMemo: mountMemo,
 	useCallback: mountCallback,
 	useReducer: mountReducer,
-	useRef: mountRef
+	useRef: mountRef,
+	useContext: useContext
 };
 
 const HooksDispatcherOnUpdate: Dispatcher = {
@@ -92,7 +94,8 @@ const HooksDispatcherOnUpdate: Dispatcher = {
 	useMemo: updateMemo,
 	useCallback: updateCallback,
 	useReducer: updateReducer,
-	useRef: updateRef
+	useRef: updateRef,
+	useContext: useContext
 };
 
 function mountState<State>(
@@ -264,6 +267,10 @@ function updateMemo<State>(nextCreate: () => State, deps: EffectDeps): State {
 	const nextValue = nextCreate();
 	hook.memoizedState = [nextValue, nextDeps];
 	return nextValue;
+}
+
+function useContext<T>(context: ReactContext<T>): T {
+	return readContext(context);
 }
 
 // 获取当前正在工作的 Hook
