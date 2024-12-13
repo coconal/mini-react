@@ -14,6 +14,7 @@ export interface Dispatcher {
 		initialArg: I,
 		init?: (initial: I) => S
 	) => [S, Dispatch<S>];
+	useRef: <S>(initialValue: S) => { current: S };
 }
 
 export type Dispatch<State> = (action: Action<State>) => void;

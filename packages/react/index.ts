@@ -34,6 +34,11 @@ export const useReducer: Dispatcher['useReducer'] = (
 	return dispatcher.useReducer(reduce, initialArgs, init);
 };
 
+export const useRef: Dispatcher['useRef'] = (initalValue) => {
+	const dispatcher = resolveDispatcher();
+	return dispatcher.useRef(initalValue);
+};
+
 // 内部数据共享层
 export const __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = {
 	currentDispatcher

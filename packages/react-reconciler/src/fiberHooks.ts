@@ -82,7 +82,8 @@ const HooksDispatcherOnMount: Dispatcher = {
 	useEffect: mountEffect,
 	useMemo: mountMemo,
 	useCallback: mountCallback,
-	useReducer: mountReducer
+	useReducer: mountReducer,
+	useRef: mountRef
 };
 
 const HooksDispatcherOnUpdate: Dispatcher = {
@@ -90,7 +91,8 @@ const HooksDispatcherOnUpdate: Dispatcher = {
 	useEffect: updateEffect,
 	useMemo: updateMemo,
 	useCallback: updateCallback,
-	useReducer: updateReducer
+	useReducer: updateReducer,
+	useRef: updateRef
 };
 
 function mountState<State>(
@@ -196,6 +198,18 @@ function mountReducer<State, I, A>(
 	return [hook.memoizedState, dispatch];
 }
 
+function mountRef<State>(initialValue: State): { current: State } {
+	const hook = mountWorkInProgressHook();
+	const ref = { current: initialValue };
+	hook.memoizedState = ref;
+	return ref;
+}
+
+function updateRef<State>(initialValue: State): { current: State } {
+	const hook = updateWorkInProgressHook();
+	return hook.memoizedState;
+}
+
 function updateReducer<State, I, A>(
 	reducer: (s: State, a: A) => State,
 	initialArg: I,
@@ -213,7 +227,6 @@ function updateReducer<State, I, A>(
 		);
 		hook.memoizedState = memoizedState;
 	}
-	queue.lastReducer = null;
 
 	return [hook.memoizedState, queue.dispatch];
 }
