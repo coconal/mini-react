@@ -1,6 +1,12 @@
 // packages/react-reconciler/src/beginWork.ts
 import { ReactElementType } from 'shared/ReactTypes';
-import { FiberNode } from './fiber';
+import {
+	createFiberFromElement,
+	createFiberFromTypeAndProps,
+	createWorkInProgress,
+	FiberNode,
+	isSimpleFunctionComponent
+} from './fiber';
 import { UpdateQueue, processUpdateQueue } from './updateQueue';
 import {
 	HostComponent,
@@ -8,12 +14,15 @@ import {
 	HostText,
 	FunctionComponent,
 	Fragment,
-	ContextProvider
+	ContextProvider,
+	SimpleMemoComponent,
+	MemoComponent
 } from './workTags';
 import { reconcileChildFibers, mountChildFibers } from './childFiber';
 import { renderWithHooks } from './fiberHooks';
 import { Lane } from './fiberLanes';
 import { pushProvider } from './fiberNewContext';
+import shallowEqual from 'shared/shallowEqual';
 
 // 比较并返回子 FiberNode
 export const beginWork = (workInProgress: FiberNode, renderLane: Lane) => {
@@ -30,6 +39,10 @@ export const beginWork = (workInProgress: FiberNode, renderLane: Lane) => {
 			return updateFragment(workInProgress);
 		case ContextProvider:
 			return updateContextProvider(workInProgress);
+		case MemoComponent:
+			return updateMemoComponent(workInProgress, renderLane);
+		case SimpleMemoComponent:
+			return updateSimpleMemoComponent(workInProgress, renderLane);
 		default:
 			if (__DEV__) {
 				console.warn('beginWork 未实现的类型', workInProgress.tag);
@@ -90,6 +103,68 @@ function updateContextProvider(workInProgress: FiberNode) {
 	pushProvider(context, value);
 	reconcileChildren(workInProgress, nextChildren);
 	return workInProgress.child;
+}
+
+function updateMemoComponent(workInProgress: FiberNode, renderLane: Lane) {
+	const current = workInProgress.alternate;
+	const Component = workInProgress.type;
+	const type = Component.type;
+	if (current === null) {
+		if (
+			isSimpleFunctionComponent(type) &&
+			Component.compare === null &&
+			Component.defaultProps === undefined
+		) {
+			workInProgress.type = type;
+			workInProgress.tag = SimpleMemoComponent;
+			return updateSimpleMemoComponent(workInProgress, renderLane);
+		}
+		//初次渲染
+		const child = createFiberFromTypeAndProps(
+			type,
+			null,
+			workInProgress.pendingProps
+		);
+
+		child.return = workInProgress;
+		workInProgress.child = child;
+		return child;
+	}
+	let compare = Component.compare;
+	compare = compare !== null ? compare : shallowEqual;
+	if (compare(current!.memoizedProps, workInProgress.pendingProps)) {
+		return bailoutOnAlreadyFinishedWork();
+	}
+
+	const newChild = createWorkInProgress(
+		current as FiberNode,
+		workInProgress.pendingProps
+	);
+	newChild.return = workInProgress;
+	workInProgress.child = newChild;
+	return newChild;
+}
+
+function updateSimpleMemoComponent(
+	workInProgress: FiberNode,
+	renderLane: Lane
+) {
+	if (workInProgress.alternate !== null) {
+		//退出渲染
+		if (
+			shallowEqual(
+				workInProgress.alternate.memoizedProps,
+				workInProgress.pendingProps
+			)
+		) {
+			return bailoutOnAlreadyFinishedWork();
+		}
+	}
+	return updateFunctionComponent(workInProgress, renderLane);
+}
+
+function bailoutOnAlreadyFinishedWork() {
+	return null;
 }
 
 // 对比子节点的 current FiberNode 与 子节点的 ReactElement

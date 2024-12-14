@@ -63,6 +63,9 @@ export const useContext: Dispatcher['useContext'] = (context) => {
 	return dispatcher.useContext(context);
 };
 
+import { memo } from './src/ReactMemo';
+
+export { memo };
 // 内部数据共享层
 export const __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = {
 	currentDispatcher

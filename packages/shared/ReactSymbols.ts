@@ -11,3 +11,4 @@ export const REACT_FRAGMENT_TYPE = supportSymbol
 
 export const REACT_PROVIDER_TYPE = Symbol.for('react.provider');
 export const REACT_CONTEXT_TYPE = Symbol.for('react.context');
+export const REACT_MEMO_TYPE = Symbol.for('react.memo');

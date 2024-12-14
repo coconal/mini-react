@@ -13,7 +13,9 @@ import {
 	HostText,
 	FunctionComponent,
 	Fragment,
-	ContextProvider
+	ContextProvider,
+	MemoComponent,
+	SimpleMemoComponent
 } from './workTags';
 import { NoFlags, Update } from './fiberFlags';
 import { updateFiberProps } from 'react-dom/src/SyntheticEvent';
@@ -27,6 +29,8 @@ export const completeWork = (workInProgress: FiberNode) => {
 		case HostRoot:
 		case FunctionComponent:
 		case Fragment:
+		case MemoComponent:
+		case SimpleMemoComponent:
 			bubbleProperties(workInProgress);
 			return null;
 		case ContextProvider:

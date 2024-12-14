@@ -39,10 +39,11 @@ export const commitUpdate = (fiber: FiberNode) => {
 	switch (fiber.tag) {
 		case HostComponent:
 			return updateFiberProps(fiber.stateNode, fiber.memoizedProps);
-		case HostText:
+		case HostText: {
 			const text = fiber.memoizedProps.content;
 			commitTextUpdate(fiber.stateNode, text);
 			break;
+		}
 		default:
 			if (__DEV__) {
 				console.warn('未实现的 commitUpdate 类型', fiber);

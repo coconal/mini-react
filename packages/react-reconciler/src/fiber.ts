@@ -4,13 +4,18 @@ import {
 	Fragment,
 	FunctionComponent,
 	HostComponent,
+	MemoComponent,
 	WorkTag
 } from './workTags';
 import { NoFlags, Flags } from './fiberFlags';
 import { Container } from 'hostConfig';
 import { Lane, Lanes, NoLane, NoLanes } from './fiberLanes';
 import { Effect } from './fiberHooks';
-import { REACT_FRAGMENT_TYPE, REACT_PROVIDER_TYPE } from 'shared/ReactSymbols';
+import {
+	REACT_FRAGMENT_TYPE,
+	REACT_MEMO_TYPE,
+	REACT_PROVIDER_TYPE
+} from 'shared/ReactSymbols';
 
 export class FiberNode {
 	tag: WorkTag;
@@ -126,6 +131,12 @@ export function createFiberFromElement(element: ReactElementType): FiberNode {
 		switch (type.$$typeof) {
 			case REACT_PROVIDER_TYPE:
 				fiberTag = ContextProvider;
+				break;
+			case REACT_MEMO_TYPE:
+				fiberTag = MemoComponent;
+				break;
+			default:
+				break;
 		}
 	} else if (typeof type !== 'function' && __DEV__) {
 		console.warn('未定义的 type 类型', element);
@@ -139,4 +150,38 @@ export function createFiberFromElement(element: ReactElementType): FiberNode {
 export function createFiberFromFragment(elements: any[], key: Key): FiberNode {
 	const fiber = new FiberNode(Fragment, elements, key);
 	return fiber;
+}
+
+export function createFiberFromTypeAndProps(
+	type: any,
+	key: Key,
+	pendingProps: any
+) {
+	let fiberTag: WorkTag = FunctionComponent;
+	console.log(typeof type);
+
+	if (typeof type === 'object' && type !== null) {
+		switch (type.$$typeof) {
+			case REACT_MEMO_TYPE:
+				fiberTag = MemoComponent;
+				break;
+		}
+	}
+	const fiber = new FiberNode(fiberTag, pendingProps, key);
+	fiber.type = type;
+	return fiber;
+}
+
+function shouldConstruct(Conponnet: Function) {
+	const prototpe = Conponnet.prototype;
+	return !!(prototpe && prototpe.isReactComponent);
+}
+
+export function isSimpleFunctionComponent(type: any): boolean {
+	return (
+		typeof type === 'function' &&
+		//不是类组件
+		!shouldConstruct(type) &&
+		type.defaultProps === undefined
+	);
 }
