@@ -2,7 +2,7 @@
 
 {
 	"compileOnSave": true,
-	"include": ["packages/**/*"],
+	"include": ["packages/**/*", "jest.config.ts"],
 	"compilerOptions": {
 		"target": "ESNext",
 		"useDefineForClassFields": true,
